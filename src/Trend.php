@@ -8,6 +8,7 @@ use Error;
 use Flowframe\Trend\Adapters\MySqlAdapter;
 use Flowframe\Trend\Adapters\PgsqlAdapter;
 use Flowframe\Trend\Adapters\SqliteAdapter;
+use Flowframe\Trend\Adapters\SqlserverAdapter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -98,14 +99,26 @@ class Trend
 
     public function aggregate(string $column, string $aggregate): Collection
     {
+        $dbDriver = $this->builder->getConnection()->getDriverName();
+        $sqlDate = $this->getSqlDate();
+
         $values = $this->builder
             ->toBase()
             ->selectRaw("
-                {$this->getSqlDate()} as {$this->dateAlias},
+                {$sqlDate} as {$this->dateAlias},
                 {$aggregate}({$column}) as aggregate
             ")
             ->whereBetween($this->dateColumn, [$this->start, $this->end])
-            ->groupBy($this->dateAlias)
+            // For all db drivers except sqlserver
+            ->when(
+                $dbDriver !== 'sqlsrv',
+                fn ($query) => $query->groupBy($this->dateAlias)
+            )
+            // Specifically for sqlsrv driver
+            ->when(
+                $dbDriver === 'sqlsrv',
+                fn ($query) => $query->groupByRaw($sqlDate)
+            )
             ->orderBy($this->dateAlias)
             ->get();
 
@@ -174,6 +187,7 @@ class Trend
             'mysql', 'mariadb' => new MySqlAdapter(),
             'sqlite' => new SqliteAdapter(),
             'pgsql' => new PgsqlAdapter(),
+            'sqlsrv' => new SqlserverAdapter(),
             default => throw new Error('Unsupported database driver.'),
         };
 
