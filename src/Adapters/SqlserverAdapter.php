@@ -12,7 +12,7 @@ class SqlserverAdapter extends AbstractAdapter
             'minute' => "LEFT(CONVERT(VARCHAR, [$column], 120), 17) + '00'",
             'hour' => "LEFT(CONVERT(VARCHAR, [$column], 120), 14) + '00:00'",
             'day' => "CONVERT(VARCHAR, [$column], 23)",
-            'week' => "DATEADD(WEEK, DATEDIFF(WEEK, 0, [$column]), 0)",
+            'week' => "CONVERT(VARCHAR(5), [$column]) + CONVERT(VARCHAR, DATEPART(WEEK, [$column]))",
             'month' => "LEFT(CONVERT(VARCHAR, [$column], 23), 7)",
             'year' => "CONVERT(VARCHAR(4), YEAR([$column]))",
             default => throw new Error('Invalid interval.'),
